@@ -1,0 +1,5 @@
+syntax: glob
+elm-stuff
+.DS_Store
+*.swp
+elm.js
