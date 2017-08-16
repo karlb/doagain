@@ -28,6 +28,7 @@ type Msg
     | Tick Time
     | NextDay Time
     | AddTag Int
+    | RemoveTag Int String
     | UpdateTag Int String
     | FinishTagEdit Int String
 
@@ -201,6 +202,16 @@ update msg model =
         AddTag uint ->
             { model | edit = EditTag uint "" }
                 ! [ Task.attempt (\_ -> NoOp) (Dom.focus "focus-this") ]
+
+        RemoveTag uid tag ->
+            { model
+                | entries =
+                    List.Extra.updateIf
+                        (\e -> e.id == uid)
+                        (\e -> { e | tags = List.filter (\t -> t /= tag) e.tags })
+                        model.entries
+            }
+                ! []
 
         UpdateTag uid text ->
             { model | edit = EditTag uid text }

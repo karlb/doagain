@@ -181,7 +181,19 @@ viewTags todo edit =
             ((if List.isEmpty todo.tags then
                 [ div [ class "tag" ] [ text "No tags" ] ]
               else
-                List.map (\t -> div [ class "tag" ] [ text t ]) todo.tags
+                List.map
+                    (\t ->
+                        div
+                            [ class "tag" ]
+                            [ text t
+                            , span
+                                [ class "remove"
+                                , onClick (RemoveTag todo.id t)
+                                ]
+                                [ text "×" ]
+                            ]
+                    )
+                    todo.tags
              )
                 ++ [ case editString of
                         Just text ->

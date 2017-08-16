@@ -395,3 +395,12 @@ label[for='toggle-all'] {
 .plus {
     margin-left: 3px;
 }
+
+.remove {
+    margin-left: 4px;
+    display: none;
+}
+
+.tag:hover .remove {
+    display: inline;
+}
