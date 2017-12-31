@@ -36,7 +36,7 @@ viewInput : String -> Html Msg
 viewInput task =
     header
         [ class "header" ]
-        [ h1 [ onClick (GetTimeAndThen (\time -> NextDay time)) ] [ text "Do Again" ]
+        [ h1 [ onClick (GetTimeAndThen (\time -> NextDay time)) ] [ text "Do Again List" ]
         , input
             [ class "new-todo"
             , placeholder "What do you want to do again?"
@@ -315,13 +315,15 @@ visibilitySwap visibility actualVisibility =
 infoFooter : Html msg
 infoFooter =
     footer [ class "info" ]
-        [ p [] [ text "Double-click to edit a todo" ]
+        [ p [] [ text "Double-click to edit a todo, date or tag" ]
         , p []
             [ text "Written by "
-            , a [ href "https://github.com/evancz" ] [ text "Evan Czaplicki" ]
-            ]
-        , p []
-            [ text "Part of "
+            , a [ href "https://karl.berlin" ] [ text "Karl Bartel" ]
+            , text " based on the "
+            , a [ href "https://github.com/evancz/elm-todomvc" ] [ text "Elm implementation" ]
+            , text " of "
             , a [ href "http://todomvc.com" ] [ text "TodoMVC" ]
+            , text " by "
+            , a [ href "https://github.com/evancz" ] [ text "Evan Czaplicki" ]
             ]
         ]
