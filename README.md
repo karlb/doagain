@@ -1,5 +1,7 @@
 # The Do Again List
 
+## [Launch Do Again List now!](http://static.karl.berlin/doagain/)
+
 There are things you want to do somewhat regularly, but you can't remember them at the right time? This could be
 
 * tasty meals to prepare again
