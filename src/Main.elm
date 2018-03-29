@@ -1,4 +1,4 @@
-port module Todo exposing (..)
+port module Main exposing (..)
 
 import Html
 import Json.Encode
@@ -26,6 +26,9 @@ main =
 
 
 port setStorage : Json.Encode.Value -> Cmd msg
+
+
+port setState : (Json.Encode.Value -> msg) -> Sub msg
 
 
 updateSortAndSave : Msg -> Model -> ( Model, Cmd Msg )
@@ -78,4 +81,5 @@ subscriptions model =
     Sub.batch
         [ Time.every Time.second Tick
         , Time.every Time.hour NextDay
+        , setState NewState
         ]

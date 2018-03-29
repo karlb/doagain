@@ -404,3 +404,10 @@ label[for='toggle-all'] {
 .tag:hover .remove {
     display: inline;
 }
+
+
+#remotestorage-widget {
+	position: fixed;
+	bottom: 0;
+	right: 0;
+}

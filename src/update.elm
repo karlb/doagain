@@ -8,6 +8,8 @@ import List
 import List.Extra exposing (find)
 import Model exposing (..)
 import Helper exposing (..)
+import Json.Encode
+import Json.Decode
 
 
 type Msg
@@ -31,6 +33,7 @@ type Msg
     | RemoveTag Int String
     | UpdateTag Int String
     | FinishTagEdit Int String
+    | NewState Json.Encode.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -227,3 +230,11 @@ update msg model =
                         model.entries
             }
                 ! []
+
+        NewState newModelJson ->
+            case Json.Decode.decodeValue modelDecoder newModelJson of
+                Ok newModel ->
+                    newModel ! []
+
+                Err error ->
+                    Debug.crash "could not parse new model"

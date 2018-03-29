@@ -5,19 +5,62 @@
   <meta charset="UTF-8">
   <title>Do Again List</title>
   <script type="text/javascript" src="elm.js"></script>
+  <script type="text/javascript" src="lib/remotestorage.js"></script>
+  <script type="text/javascript" src="lib/widget.js"></script>
+  <script type="text/javascript" src="remotestorage-doagain.js"></script>
+  <script type="text/javascript">
+	// init remotestorage
+	var remoteStorage = new RemoteStorage({
+		modules: [RemotestorageDoagain],
+		changeEvents: {
+			conflict: true,
+			remote: true,
+		},
+		cache: true,
+		//logging: true,
+	});
+	var scope = 'doagain';
+	var path = '/' + scope + '/';
+	remoteStorage.access.claim(scope, 'rw');
+	remoteStorage.caching.enable(path);
+
+	document.addEventListener("DOMContentLoaded", function() {
+		remoteStorage.doagain.load().then(
+			// get initial data
+			function(state) {
+				if (state) {
+					console.log('loaded from remotestorage');
+					return state;
+				} else {
+					var storedState = JSON.parse(localStorage.getItem('elm-todo-save'));
+					if (storedState) {
+						// migrate old data from plain localstorage
+						console.log('migrate to remotestorage');
+						remoteStorage.doagain.save(storedState)
+							.then(function() { console.log("migration successful") });
+					} else {
+						console.log('no save found, starting with empty list');
+					}
+					return storedState;
+				}
+			}
+		).then(function(startingState) {
+			// start elm app and connect save function
+			doagain = Elm.Main.fullscreen(startingState);
+			doagain.ports.setStorage.subscribe(function(state) {
+				remoteStorage.doagain.save(state);
+			});
+			remoteStorage.doagain.onStateChange(doagain.ports.setState.send);
+		});
+
+		// add remoteStorage widget
+		(new Widget(remoteStorage)).attach();
+	});
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 </body>
-
-<script type="text/javascript">
-var storedState = localStorage.getItem('elm-todo-save');
-var startingState = storedState ? JSON.parse(storedState) : null;
-var todomvc = Elm.Todo.fullscreen(startingState);
-todomvc.ports.setStorage.subscribe(function(state) {
-    localStorage.setItem('elm-todo-save', JSON.stringify(state));
-});
-</script>
 
 </html>
