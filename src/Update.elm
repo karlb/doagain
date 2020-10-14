@@ -1,15 +1,15 @@
 module Update exposing (..)
 
-import Dom
-import Task
-import Time exposing (Time)
+import Browser.Dom as Dom
 import Date
-import List
-import List.Extra exposing (find)
-import Model exposing (..)
 import Helper exposing (..)
-import Json.Encode
 import Json.Decode
+import Json.Encode
+import List
+import List.Extra
+import Model exposing (..)
+import Task
+import Time
 
 
 type Msg
@@ -20,15 +20,15 @@ type Msg
     | EditingDate Int Int String
     | UpdateDate Int String
     | FinishDateEdit Int Int String
-    | AddDate Entry Time
+    | AddDate Entry Time.Posix
     | AbortEdit
     | Add
     | Delete Int
-    | Check Int Bool Time
+    | Check Int Bool Time.Posix
     | ChangeVisibility (Maybe String)
-    | GetTimeAndThen (Time -> Msg)
-    | Tick Time
-    | NextDay Time
+    | GetTimeAndThen (Time.Posix -> Msg)
+    | Tick Time.Posix
+    | NextDay Time.Posix
     | AddTag Int
     | RemoveTag Int String
     | UpdateTag Int String
@@ -40,53 +40,62 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NoOp ->
-            model ! []
+            ( model
+            , Cmd.none
+            )
 
         Add ->
-            { model
+            ( { model
                 | uid = model.uid + 1
                 , field = ""
                 , entries =
                     if String.isEmpty model.field then
                         model.entries
+
                     else
                         model.entries ++ [ newEntry model.field model.uid model.visibility ]
-            }
-                ! []
+              }
+            , Cmd.none
+            )
 
         UpdateField str ->
-            { model | field = str }
-                ! []
+            ( { model | field = str }
+            , Cmd.none
+            )
 
         EditingEntry id isEditing ->
             let
                 updateEntry t =
                     if t.id == id then
                         { t | editing = isEditing }
+
                     else
                         t
 
                 focus =
-                    Dom.focus ("todo-" ++ toString id)
+                    Dom.focus ("todo-" ++ String.fromInt id)
             in
-                { model | entries = List.map updateEntry model.entries }
-                    ! [ Task.attempt (\_ -> NoOp) focus ]
+            ( { model | entries = List.map updateEntry model.entries }
+            , Task.attempt (\_ -> NoOp) focus
+            )
 
         EditingDate id dateIndex startText ->
-            { model | edit = EditDate id dateIndex startText }
-                ! [ Task.attempt (\_ -> NoOp) (Dom.focus ("focus-this")) ]
+            ( { model | edit = EditDate id dateIndex startText }
+            , Task.attempt (\_ -> NoOp) (Dom.focus "focus-this")
+            )
 
         UpdateDate id dateString ->
-            { model
+            ( { model
                 | edit =
                     case model.edit of
-                        EditDate id dateIndex _ ->
-                            EditDate id dateIndex dateString
+                        EditDate id2 dateIndex _ ->
+                            EditDate id2 dateIndex dateString
 
                         _ ->
                             NoEdit
-            }
-                ! []
+              }
+            , Cmd.none
+            )
 
         FinishDateEdit id dateIndex text ->
             if text == "" then
@@ -94,95 +103,107 @@ update msg model =
                     updateEntry e =
                         { e | doneAt = List.Extra.removeAt dateIndex e.doneAt }
                 in
-                    { model
-                        | edit = NoEdit
-                        , entries =
-                            List.Extra.updateIf
-                                (\e -> e.id == id)
-                                updateEntry
-                                model.entries
-                    }
-                        ! []
+                ( { model
+                    | edit = NoEdit
+                    , entries =
+                        List.Extra.updateIf
+                            (\e -> e.id == id)
+                            updateEntry
+                            model.entries
+                  }
+                , Cmd.none
+                )
+
             else
-                case Date.fromString text of
+                case posixFromIso text of
                     Ok newDate ->
                         let
                             updateEntry e =
-                                case
-                                    (List.Extra.setAt
-                                        dateIndex
-                                        (Date.toTime newDate)
-                                        e.doneAt
-                                    )
-                                of
-                                    Just newDoneAt ->
-                                        { e | doneAt = newDoneAt |> List.sort |> List.reverse }
-
-                                    Nothing ->
-                                        Debug.crash "bad dateIndex"
+                                let
+                                    newDoneAt =
+                                        List.Extra.setAt
+                                            dateIndex
+                                            newDate
+                                            e.doneAt
+                                in
+                                { e | doneAt = newDoneAt |> sortTime |> List.reverse }
                         in
-                            { model
-                                | edit = NoEdit
-                                , entries =
-                                    List.Extra.updateIf
-                                        (\e -> e.id == id)
-                                        updateEntry
-                                        model.entries
-                            }
-                                ! []
+                        ( { model
+                            | edit = NoEdit
+                            , entries =
+                                List.Extra.updateIf
+                                    (\e -> e.id == id)
+                                    updateEntry
+                                    model.entries
+                          }
+                        , Cmd.none
+                        )
 
                     Err _ ->
-                        model ! []
+                        ( model
+                        , Cmd.none
+                        )
 
         AddDate todo now ->
-            { model
+            ( { model
                 | edit = EditDate todo.id (List.length todo.doneAt) (fmtTime now)
                 , entries =
                     List.Extra.updateIf
                         (\e -> e == todo)
                         (\e -> { e | doneAt = List.append e.doneAt [ now ] })
                         model.entries
-            }
-                ! [ Task.attempt (\_ -> NoOp) (Dom.focus ("focus-this")) ]
+              }
+            , Task.attempt (\_ -> NoOp) (Dom.focus "focus-this")
+            )
 
         AbortEdit ->
-            { model | edit = NoEdit } ! []
+            ( { model | edit = NoEdit }
+            , Cmd.none
+            )
 
         UpdateEntry id task ->
             let
                 updateEntry t =
                     if t.id == id then
                         { t | description = task }
+
                     else
                         t
             in
-                { model | entries = List.map updateEntry model.entries }
-                    ! []
+            ( { model | entries = List.map updateEntry model.entries }
+            , Cmd.none
+            )
 
         Delete id ->
-            { model | entries = List.filter (\t -> t.id /= id) model.entries }
-                ! []
+            ( { model | entries = List.filter (\t -> t.id /= id) model.entries }
+            , Cmd.none
+            )
 
         Check id isCompleted time ->
             let
                 updateEntry t =
                     if t.id == id then
                         { t | completed = isCompleted }
+
                     else
                         t
             in
-                { model | entries = List.map updateEntry model.entries }
-                    ! []
+            ( { model | entries = List.map updateEntry model.entries }
+            , Cmd.none
+            )
 
         ChangeVisibility visibility ->
-            { model | visibility = visibility }
-                ! []
+            ( { model | visibility = visibility }
+            , Cmd.none
+            )
 
         GetTimeAndThen successHandler ->
-            ( model, (Task.perform successHandler Time.now) )
+            ( model, Task.perform successHandler Time.now )
 
         Tick time ->
-            { model | now = time } ! []
+            ( { model | now = time }
+            , Cmd.none
+            )
 
         NextDay time ->
             -- uncheck all
@@ -199,42 +220,49 @@ update msg model =
                                     t.doneAt
                     }
             in
-                { model | entries = List.map updateEntry model.entries }
-                    ! []
+            ( { model | entries = List.map updateEntry model.entries }
+            , Cmd.none
+            )
 
         AddTag uint ->
-            { model | edit = EditTag uint "" }
-                ! [ Task.attempt (\_ -> NoOp) (Dom.focus "focus-this") ]
+            ( { model | edit = EditTag uint "" }
+            , Task.attempt (\_ -> NoOp) (Dom.focus "focus-this")
+            )
 
         RemoveTag uid tag ->
-            { model
+            ( { model
                 | entries =
                     List.Extra.updateIf
                         (\e -> e.id == uid)
                         (\e -> { e | tags = List.filter (\t -> t /= tag) e.tags })
                         model.entries
-            }
-                ! []
+              }
+            , Cmd.none
+            )
 
         UpdateTag uid text ->
-            { model | edit = EditTag uid text }
-                ! []
+            ( { model | edit = EditTag uid text }
+            , Cmd.none
+            )
 
         FinishTagEdit uid text ->
-            { model
+            ( { model
                 | edit = NoEdit
                 , entries =
                     List.Extra.updateIf
                         (\e -> e.id == uid)
                         (\e -> { e | tags = List.append e.tags [ text ] })
                         model.entries
-            }
-                ! []
+              }
+            , Cmd.none
+            )
 
         NewState newModelJson ->
             case Json.Decode.decodeValue modelDecoder newModelJson of
                 Ok newModel ->
-                    newModel ! []
+                    ( newModel
+                    , Cmd.none
+                    )
 
                 Err error ->
-                    Debug.crash "could not parse new model"
+                    Debug.todo "could not parse new model"

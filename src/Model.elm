@@ -1,11 +1,11 @@
 module Model exposing (..)
 
-import Json.Encode
-import Json.Decode
-import Time exposing (Time)
-import Maybe exposing (withDefault)
-import List.Extra exposing (find)
 import Helper exposing (..)
+import Json.Decode
+import Json.Encode
+import List.Extra exposing (find)
+import Maybe exposing (withDefault)
+import Time
 
 
 type alias Model =
@@ -13,7 +13,7 @@ type alias Model =
     , field : String
     , uid : Int
     , visibility : Maybe String
-    , now : Time
+    , now : Time.Posix
     , edit : Edit
     }
 
@@ -23,7 +23,7 @@ type alias Entry =
     , completed : Bool
     , editing : Bool
     , id : Int
-    , doneAt : List Time
+    , doneAt : List Time.Posix
     , tags : List String
     }
 
@@ -40,7 +40,7 @@ emptyModel =
     , visibility = Nothing
     , field = ""
     , uid = 0
-    , now = 0
+    , now = Time.millisToPosix 0
     , edit = NoEdit
     }
 
@@ -62,35 +62,35 @@ newEntry desc id tag =
     }
 
 
-due : Entry -> Maybe Time
+due : Entry -> Maybe Time.Posix
 due e =
     case List.head e.doneAt of
         Nothing ->
             Nothing
 
         Just lastCheck ->
-            case avgDiff e.doneAt of
+            case avgDiff (List.map Time.posixToMillis e.doneAt) of
                 Nothing ->
                     Nothing
 
                 Just avg_diff ->
-                    Just (lastCheck + avg_diff)
+                    Just ((Time.posixToMillis lastCheck + avg_diff) |> Time.millisToPosix)
 
 
-sortEntries : List Entry -> Time -> List Entry
+sortEntries : List Entry -> Time.Posix -> List Entry
 sortEntries l now =
     let
         cmp_val a =
-            ( due a |> withDefault now
+            ( due a |> withDefault now |> Time.posixToMillis
             , case a.doneAt of
                 [] ->
                     0
 
                 done :: _ ->
-                    done
+                    Time.posixToMillis done
             )
     in
-        List.sortWith (\a b -> compare (cmp_val a) (cmp_val b)) l
+    List.sortWith (\a b -> compare (cmp_val a) (cmp_val b)) l
 
 
 findEntry : Model -> Int -> Maybe Entry
@@ -105,7 +105,7 @@ findEntry model uid =
 modelEncoder : Model -> Json.Encode.Value
 modelEncoder m =
     Json.Encode.object
-        [ ( "entries", Json.Encode.list (List.map entryEncoder m.entries) )
+        [ ( "entries", Json.Encode.list entryEncoder m.entries )
         , ( "field", Json.Encode.string m.field )
         , ( "uid", Json.Encode.int m.uid )
         , ( "visibility"
@@ -126,7 +126,7 @@ modelDecoder =
         (Json.Decode.field "field" Json.Decode.string)
         (Json.Decode.field "uid" Json.Decode.int)
         (Json.Decode.field "visibility" (Json.Decode.nullable Json.Decode.string))
-        (Json.Decode.succeed 0)
+        (Json.Decode.succeed (Time.millisToPosix 0))
         -- time will be updated, anyway
         (Json.Decode.succeed NoEdit)
 
@@ -138,8 +138,12 @@ entryEncoder e =
         , ( "completed", Json.Encode.bool e.completed )
         , ( "editing", Json.Encode.bool e.editing )
         , ( "id", Json.Encode.int e.id )
-        , ( "doneAt", Json.Encode.list (List.map Json.Encode.float e.doneAt) )
-        , ( "tags", Json.Encode.list (List.map Json.Encode.string e.tags) )
+        , ( "doneAt"
+          , Json.Encode.list
+                (\x -> Time.posixToMillis x |> toFloat |> Json.Encode.float)
+                e.doneAt
+          )
+        , ( "tags", Json.Encode.list Json.Encode.string e.tags )
         ]
 
 
@@ -150,5 +154,5 @@ entryDecoder =
         (Json.Decode.field "completed" Json.Decode.bool)
         (Json.Decode.field "editing" Json.Decode.bool)
         (Json.Decode.field "id" Json.Decode.int)
-        (Json.Decode.field "doneAt" (Json.Decode.list Json.Decode.float))
+        (Json.Decode.field "doneAt" (Json.Decode.list (Json.Decode.float |> Json.Decode.map (\x -> round x |> Time.millisToPosix))))
         (Json.Decode.field "tags" (Json.Decode.list Json.Decode.string))

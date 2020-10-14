@@ -46,9 +46,11 @@
 			}
 		).then(function(startingState) {
 			// start elm app and connect save function
-			doagain = Elm.Main.fullscreen(startingState);
+			doagain = Elm.Main.init({flags: startingState});
 			doagain.ports.setStorage.subscribe(function(state) {
-				remoteStorage.doagain.save(state);
+				console.log('save', state);
+				remoteStorage.doagain.save(state)
+					.catch(reason => console.log('Save failed:', reason.toString(), reason));
 			});
 			remoteStorage.doagain.onStateChange(doagain.ports.setState.send);
 		});

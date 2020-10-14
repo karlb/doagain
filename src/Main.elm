@@ -1,21 +1,22 @@
 port module Main exposing (..)
 
+import Browser
+import Helper exposing (..)
 import Html
-import Json.Encode
 import Json.Decode
-import Time exposing (Time)
-import Platform.Cmd
+import Json.Encode
 import Model exposing (..)
+import Platform.Cmd
+import Time
 import Update exposing (..)
 import View exposing (..)
-import Helper exposing (..)
 
 
 main : Program (Maybe Json.Decode.Value) Model Msg
 main =
-    Html.programWithFlags
+    Browser.document
         { init = init
-        , view = view
+        , view = \model -> { title = "DoAgain", body = [ view model ] }
         , update = updateSortAndSave
         , subscriptions = subscriptions
         }
@@ -37,9 +38,9 @@ updateSortAndSave msg model =
         ( newModel, cmds ) =
             update msg model
     in
-        ( { newModel | entries = sortEntries newModel.entries newModel.now }
-        , Cmd.batch [ saveModel newModel msg, cmds ]
-        )
+    ( { newModel | entries = sortEntries newModel.entries newModel.now }
+    , Cmd.batch [ saveModel newModel msg, cmds ]
+    )
 
 
 saveModel : Model -> Msg -> Cmd Msg
@@ -67,9 +68,9 @@ init savedModel =
                             value
 
                         Err error ->
-                            Debug.crash "could not load model"
+                            Debug.todo "could not load model"
     in
-        update (GetTimeAndThen Tick) model
+    update (GetTimeAndThen Tick) model
 
 
 
@@ -79,7 +80,7 @@ init savedModel =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every Time.second Tick
-        , Time.every Time.hour NextDay
+        [ Time.every 1000 Tick -- Every second
+        , Time.every (1000 * 60 * 60) NextDay -- Every hour
         , setState NewState
         ]

@@ -85,7 +85,7 @@ var jsonSchema = {
   },
   "visibility": {
     "$id": "/properties/visibility",
-    "type": "string",
+    "type": ["string", "null"],
     "title": "Which category is shown",
     "default": "",
     "examples": [
