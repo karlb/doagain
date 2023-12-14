@@ -53,10 +53,11 @@
 					.catch(reason => console.log('Save failed:', reason.toString(), reason));
 			});
 			remoteStorage.doagain.onStateChange(doagain.ports.setState.send);
-		});
 
-		// add remoteStorage widget
-		(new Widget(remoteStorage)).attach();
+			// add remoteStorage widget
+			widget = new Widget(remoteStorage);
+			widget.attach();
+		});
 	});
   </script>
   <link rel="stylesheet" href="style.css">
