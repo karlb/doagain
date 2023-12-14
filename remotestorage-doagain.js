@@ -112,7 +112,6 @@ var RemotestorageDoagain = { name: 'doagain', builder: function(privateClient, p
         privateClient.on('change', function (evt) {
           if (evt.origin === 'remote' || evt.origin === 'conflict') {
             console.debug('Use remote data:', evt.origin, evt.newValue);
-            callback(evt.newValue);
             if (evt.origin === 'conflict') {
               // Create a backup for the case that important data has
               // been lost during conflict resolution.
@@ -129,7 +128,15 @@ var RemotestorageDoagain = { name: 'doagain', builder: function(privateClient, p
                 }
               });
               evt.newValue.uid = Math.max(evt.oldValue.uid, evt.newValue.uid)
+
+              console.log('resolved conflict')
             }
+
+            // Let Elm know of new state.
+            // This will also call save and thereby mark conflicts as resolved, but save must not be called from the change event handler, therefore this is executed in setTimeout.
+            setTimeout(function() {
+              callback(evt.newValue);
+            });
           }
         });
       },
