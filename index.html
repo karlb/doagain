@@ -23,6 +23,7 @@
 	var path = '/' + scope + '/';
 	remoteStorage.access.claim(scope, 'rw');
 	remoteStorage.caching.enable(path);
+	let saveTimeout;
 
 	document.addEventListener("DOMContentLoaded", function() {
 		remoteStorage.doagain.load().then(
@@ -48,9 +49,12 @@
 			// start elm app and connect save function
 			doagain = Elm.Main.init({flags: startingState});
 			doagain.ports.setStorage.subscribe(function(state) {
-				console.log('save', state);
-				remoteStorage.doagain.save(state)
-					.catch(reason => console.log('Save failed:', reason.toString(), reason));
+				clearTimeout(saveTimeout);
+				saveTimeout = setTimeout(function() {
+					console.log('save', state);
+					remoteStorage.doagain.save(state)
+						.catch(reason => console.log('Save failed:', reason.toString(), reason));
+				}, 1000);
 			});
 			remoteStorage.doagain.onStateChange(doagain.ports.setState.send);
 
